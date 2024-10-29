@@ -1,6 +1,8 @@
 library(tidyverse)
 library(dplyr)
 
+#this code produces the data used in Figures 3 and 4 (with the base figures created in Excel, and then beautified in Affinity)
+
 #read in downloads from iNat
 before <- read_csv("before_ids_edits.csv")
 after <- read_csv("after_ids_edits.csv")
