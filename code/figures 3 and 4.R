@@ -4,22 +4,22 @@ library(dplyr)
 #this code produces the data used in Figures 3 and 4 (with the base figures created in Excel, and then beautified in Affinity)
 
 #read in downloads from iNat
-before <- read_csv("before_ids_edits.csv")
-after <- read_csv("after_ids_edits.csv")
+before <- read_csv("data/before_ids_edits.csv")
+after <- read_csv("data/after_ids_edits.csv")
 
 #we're interested in the after updated column so I can tell which obs were reviewed, but I don't want the time, only date
 after$updated_at <- substr(after$updated_at, 1, 10)
 
-#I need to combine the before and after, as some obs from the start were made casual or bumped out through obscuration and thus get bumped from the after
+#I need to combine the before and after, as some obs from the start were made casual or bumped out through obscuration and thus get lost from the after
 combined<-dplyr::full_join(before, after, by = "id")
 
-#now let's find these so I can individually inspect them
+#now let's find these lost records so I can individually inspect them
 bumped <- combined %>%
   filter(is.na(quality_grade.y))
 
 #there are 70 of them. I will annotate each in a separate excel file, then deal with these later
 
-#similarly, let's check how many were added to iNat during the event (ie were not there for the before download)
+#similarly, let's check how many records were added to iNat during the event (ie were not there for the before download)
 
 new <- combined %>%
   filter(is.na(quality_grade.x))
@@ -27,10 +27,10 @@ new <- combined %>%
 #686 of these
 
 #so progression was start as 21316 --> 70 were lost before the end to give us 21,246, but then 686 were added to give us 21,932 at the finish line (noting that we are
-#discarding these for the main analysis)
-# of the 70 lost, 35 need to be reinstated for a total of 21,967. We'll deal with these later
+#discarding these 686 for the main analysis)
+#of the 70 lost, 35 need to be reinstated for a total of 21,967. We'll deal with these later
 
-#aside, just checking if there are any rows in combined df where every cell in the row is NA
+#aside, just checking if there are any rows in combined df where every cell in the row is NA (there shouldn't be)
 na_rows <- combined[rowSums(is.na(combined)) == ncol(combined), ]
 
 #there are none
@@ -42,15 +42,15 @@ na_rows <- combined[rowSums(is.na(combined)) == ncol(combined), ]
 write.csv(combined, file = "combined_data.csv", row.names = FALSE)
 
 #now load back in edited file
-combined_edited <- read_csv("combined_data_edited.csv")
+combined_edited <- read_csv("data/combined_data_edited.csv")
 
 #check for all na rows
 na_rows_edited <- combined_edited[rowSums(is.na(combined_edited)) == ncol(combined_edited), ]
 
-#all good, so back to the program, we'll discard the 686 batch. But I want to address the 70 that got bumped
+#all good, there aren't any as expected, so back to the program, we'll discard the 686 batch referred to above. But I want to address the 70 that got bumped
 #of these, 35 should stay bumped (various data quality and related reasons), 35 need to be reinstated
 #of the 35, 3 are from Kalbarri. 
-#First, let's filter to Kalbarri only from the combined_edited df without those 3
+#First, however, let's filter to Kalbarri only from the combined_edited df without those 3
 
 Kalbarri <- combined_edited[combined_edited$latitude_before > -28.866 & combined_edited$latitude_before < -25.5, ]
 
@@ -66,12 +66,12 @@ Kalbarri2 <- Kalbarri[!is.na(Kalbarri$grade_after), ]
 #first I'll write the bumped df as a csv, then edit that with new details from my previous manual checking, then read it back in and append for Kalbarri
 #(note that for obscured stuff, the date the new ID was added during the event is generalised to month/masked from my view, so I've just used Feb 12th as the default for everything)
 write.csv(bumped, file = "bumped_raw.csv", row.names = FALSE)
-bumped_kalbarri <- read_csv("bumped_kalbarri_only.csv")
+bumped_kalbarri <- read_csv("data/bumped_kalbarri_only.csv")
 
 #bind these to the Kalbarri file
 pre_KU<-dplyr::bind_rows(Kalbarri2, bumped_kalbarri)
 
-#so this gives us 4506 to play with for Kalbarri. Of these, how many were updated during the event
+#so this gives us 4506 to play with for Kalbarri. Of these, how many were updated during the event (event started 2024-02-12)
 KU <- pre_KU %>% filter(updated_after > as.Date("2024-02-11"))
 
 #2654 observations were reviewed out of 4506, 58.9%
@@ -79,7 +79,7 @@ KU <- pre_KU %>% filter(updated_after > as.Date("2024-02-11"))
 
 KU_species <- KU %>% filter(!is.na(species_before))
 
-#now how many of these were confirmed as correct at species level, ie started at species and species remained the same 
+#now how many of these were confirmed as correct at species level, ie started at species rank and species name remained the same 
 KU_species2 <- KU_species %>% filter(species_before == species_after)
 
 #1482/1620, which means 91.5% accuracy!
@@ -167,14 +167,14 @@ wrong <- KU_species %>%
 #94% were still in the same family (126/134)
 #the remaining four, however, weren't actually corrected; the species name changed due to a taxon swap to amend an orthographic variant
 #this affected obs of Guichenotia basiviridis and Goodenia reinwardtii
-#2 obs were already RG at species, got confirmed as correct during the event
+#2 of these were already RG at species, got confirmed as correct during the event
 #2 were needs ID at species, got confirmed and moved to RG
 
 #so some more amendments to stats to be made here
 #first though let's remove these from the wrong df
 wrong <- wrong[-c(35,83,102,111), ]
 
-#now for the amended stats to account for these 4 errors
+#now for the amended stats to account for these 4 errors (which I have done manually below instead of rerunning all the code again)
 #1479/1617, which means 91.5% accuracy! --> 1483/1617 = 91.7%
 #541/581 RG were confirmed as correct, 93.1% --> 543/581 = 93.5%
 #938/1036 needs ID were confirmed as correct, 90.6% --> 940/1036 = 90.7%
@@ -183,9 +183,9 @@ wrong <- wrong[-c(35,83,102,111), ]
 
 
 
-#now we're going to repeat all of this, but for Lesueur! 
+#now we're going to repeat all of this, but for Lesueur
 
-#Lesueur obs only:
+#filter to Lesueur obs only:
 
 Lesueur <- combined_edited[combined_edited$latitude_before > -30.883 & combined_edited$latitude_before < -29.979, ]
 
@@ -198,7 +198,7 @@ na_rows_L <- Lesueur[rowSums(is.na(Lesueur)) == ncol(Lesueur), ]
 Lesueur2 <- Lesueur[!is.na(Lesueur$grade_after), ]
 
 #For Lesueur it's 29 records that need to be appended after getting bumped
-bumped_lesueur <- read_csv("bumped_lesueur_only.csv")
+bumped_lesueur <- read_csv("data/bumped_lesueur_only.csv")
 
 #bind these to the Lesueur file
 pre_LS <-dplyr::bind_rows(Lesueur2, bumped_lesueur)
@@ -308,7 +308,7 @@ wrong2 <- LS_species %>%
 #having gone through them one by one in excel, 174 were corrected. For these, 85.1% were still in the same genus (148/174) and 
 #97.7% were still in the same family (170/174)
 #the remaining 17, however, weren't actually corrected; the species name changed due to a taxon swap to amend an orthographic variant/update a genus
-#this affected obs Goodenia reinwardtii, Melaleuca cuspidata, Babingtonia grandiflora, Ammothryon grandiflorum
+#this affected obs of Goodenia reinwardtii, Melaleuca cuspidata, Babingtonia grandiflora, Ammothryon grandiflorum
 #6 obs were already RG at species, got confirmed as correct during the event
 #9 were needs ID at species, got confirmed and moved to RG
 #and two which were RG start and end weren't actually updated at all unfortunately. So we're gonna have to do all the stats again...
@@ -357,7 +357,7 @@ RG_after_LS <- sum(LS[["grade_after"]] == "research")
 
 #went from 1135/3604 to 2918/3604 (31.5 to 80.1%)
 
-#and then amend the stats one final time to account for those 15 taxon swap cases that aren't actually wrong
+#and then manually amend the stats one final time to account for those 15 taxon swap cases that aren't actually wrong
 
 #2193/2382, which means 92.1% accuracy! --> 2208/2382 = 92.7%
 #1097/1135 were confirmed as correct, 96.7% --> 1103/1135 = 97.2%
@@ -368,9 +368,9 @@ RG_after_LS <- sum(LS[["grade_after"]] == "research")
 
 
 
-#now we're going to repeat all of this, but for Fitzgerald! 
+#now we're going to repeat all of this, but for Fitzgerald 
 
-#Fitzgerald obs only:
+#filter to Fitzgerald obs only:
 
 Fitzgerald <- combined_edited[combined_edited$latitude_before > -35.042 & combined_edited$latitude_before < -32.461, ]
 
@@ -383,7 +383,7 @@ na_rows_L <- Fitzgerald[rowSums(is.na(Fitzgerald)) == ncol(Fitzgerald), ]
 Fitzgerald2 <- Fitzgerald[!is.na(Fitzgerald$grade_after), ]
 
 #For Fitzgerald it's 3 records that need to be appended after getting bumped
-bumped_fitzgerald <- read_csv("bumped_fitzgerald_only.csv")
+bumped_fitzgerald <- read_csv("data/bumped_fitzgerald_only.csv")
 
 #bind these to the Fitzgerald file
 pre_FG <-dplyr::bind_rows(Fitzgerald2, bumped_fitzgerald)
@@ -494,7 +494,7 @@ wrong3 <- FG_species %>%
 #first though, let's remove these from the wrong df
 wrong3 <- wrong3[-c(169,194,224,230), ]
 
-#now for the amended stats
+#now for the manually amended stats
 #3030/3282, which means 92.3% accuracy! --> 3034/3282 = 92.4%
 #1737/1793 were confirmed as correct, 96.9% --> 1739/1793 = 97%
 #1293/1489 were correct, 86.8% --> 1295/1489 = 87%
@@ -502,8 +502,8 @@ wrong3 <- wrong3[-c(169,194,224,230), ]
 #--> now 603 actually matched, which means 60 removed and 156 added
 
 
-#to calculate universal stats across all 3 regions, easy enough to just add the various figures from above. The only exception is unique no. of species,
-#which we'll do below
+#to calculate universal stats across all 3 regions, it's easy enough to just add the various numbers from above, which I have done in Excel. 
+#The only exception is unique no. of species given some of these are shared across regions, which we'll do below
 
 #first, combine the 3 'before' unique species df
 gsb <- dplyr::bind_rows(unq1, unq3, unq5)
@@ -518,5 +518,5 @@ merged_unq4 <- merge(gsb2, gsb4, by = "species_before")
 
 #start at 1370, finish at 1553. 1276 matched between the two, which means 94 were removed, and then 277 added
 #but we need to account for those taxon swap cases above, which affected 5 different species
-#so actually 1281 matched, 89 removed, 273 added
+#so actually 1281 matched, 89 removed, 272 added
        
